@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "casbin": "^5.19.2",
+    "serverless-offline-sns": "^0.76.0"
+  },
+  "devDependencies": {
+    "serverless-offline": "^11.6.0"
+  }
+}
