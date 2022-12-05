@@ -4,8 +4,9 @@ const aws = require('aws-sdk')
 const { newEnforcer } = require('casbin');
 
 // Helper Functions
-const _getConfig = fileName => __dirname + "/config/" + fileName;
-const _debugPrint = variable => console.log("DEBUG: Variable ", variable, " of type ", typeof(variable));
+const _getConfig = fileName => __dirname + '/config/' + fileName;
+const _debugPrint = variable => console.log('DEBUG: Variable ', variable, ' of type ', typeof(variable));
+const _functionStagePrint = (functionName, event, stage) => console.log(stage, ' function: ', functionName, ' with params ', event);
 
 // ================================================================== //
 // Producer function that needs to trigger the consumer function
@@ -13,7 +14,7 @@ const _debugPrint = variable => console.log("DEBUG: Variable ", variable, " of t
 // Event example:
 // '{"requestId", "action": "read", "subject": "bob", "object": "data2", "nextFunction": "consumer", "useMonitor": true}'
 module.exports.producer = (event, context, callback) => {
-  _debugPrint(JSON.stringify(event, null, 2));
+  _functionStagePrint('producer', event, 'START');
   _debugPrint(event);
   _debugPrint(event.nextFunction);
   _debugPrint(event.useMonitor);
@@ -45,12 +46,14 @@ module.exports.producer = (event, context, callback) => {
       callback(null, response)
     }
   })
+  _functionStagePrint('producer', event, 'END');
 }
 
 // ================================================================== //
 // End function accessing priveleged data or performing priveleged action
 // Triggered by monitor function using process.env['consumerSnsTopicArn']
 module.exports.consumer = (event, context, callback) => {
+  _functionStagePrint('consumer', event, 'START');
   let messageStr = event.Records[0].Sns.Message;
   const message = JSON.parse(messageStr);
   _debugPrint(message);
@@ -60,12 +63,14 @@ module.exports.consumer = (event, context, callback) => {
     body: 'Received Request'
   }
   callback(null, response)
+  _functionStagePrint('consumer', event, 'END');
 }
 
 // ================================================================== //
 // Monitor function that verifies the request and forwards it to the consumer
 // Triggered by producer function using process.env['monitorSnsTopicArn']
 module.exports.monitor = async (event, context, callback) => {
+  _functionStagePrint('monitor', event, 'START');
   let messageStr = event.Records[0].Sns.Message;
   const message = JSON.parse(messageStr);
   _debugPrint(message);
@@ -107,4 +112,5 @@ module.exports.monitor = async (event, context, callback) => {
     console.log('Forbidden Request ' + JSON.stringify(message))
     callback(null, response)
   }
+  _functionStagePrint('monitor', event, 'END');
 }
