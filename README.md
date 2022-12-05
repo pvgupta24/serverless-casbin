@@ -6,7 +6,7 @@
 
 ### Usage
 - Deploy changes on AWS using `serverless deploy`
-- Invoke the producer function with the details about the chained request `serverless invoke -f producer -d '{"action": "read", "subject": "alice", "object": "data1", "function": "consumer"}' -l`
+- Invoke the producer function with the details about the chained request `serverless invoke -f producer -d '{"requestId": "10", "action": "read", "subject": "bob", "object": "data2", "nextFunction": "consumer", "useMonitor": true}' -l`
 - View logs for a function using `serverless logs -f monitor` or on [Log Groups on Cloudwatch](https://us-east-1.console.aws.amazon.com/cloudwatch/)
 
 ### Local Development

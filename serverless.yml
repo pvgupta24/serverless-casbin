@@ -15,14 +15,6 @@ custom:
   monitorSnsTopicArn: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${self:custom.monitorSnsTopic}"
   consumerSnsTopic: "consumerTopic"
   consumerSnsTopicArn: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${self:custom.consumerSnsTopic}"
-  # serverless-offline-sns:
-  #   port: 4002 # a free port for the sns server to run on
-  #   debug: false
-  #   # host: 0.0.0.0 # Optional, defaults to 127.0.0.1 if not provided to serverless-offline
-  #   # sns-endpoint: http://127.0.0.1:4567 # Optional. Only if you want to use a custom SNS provider endpoint
-  #   # sns-subscribe-endpoint: http://127.0.0.1:3000 # Optional. Only if you want to use a custom subscribe endpoint from SNS to send messages back to
-  #   # accountId: 123456789012 # Optional
-  #   # location .build # Optional if the location of your handler.js is not in ./ (useful for typescript)
 
 functions:
   producer:
@@ -40,6 +32,6 @@ functions:
     environment:
       consumerSnsTopicArn: ${self:custom.consumerSnsTopicArn}
 
-plugins:
-  - serverless-offline-sns
-  - serverless-offline
+# plugins:
+#   - serverless-offline-sns
+#   - serverless-offline

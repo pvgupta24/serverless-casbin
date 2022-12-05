@@ -10,16 +10,21 @@ const _getConfig = fileName => __dirname + "/config/" + fileName;
 // Producer function that needs to trigger the consumer function
 // Sending the request to the monitor function to verify and forward
 // Event example:
-// '{"action": "read", "subject": "bob", "object": "data2", "function": "consumer"}'
+// '{"requestId", "action": "read", "subject": "bob", "object": "data2", "nextFunction": "consumer", "useMonitor": true}'
 module.exports.producer = (event, context, callback) => {
   let sns = new aws.SNS()
+  const useMonitor = event.useMonitor ?? true;
+
+  // Whether to use intermediate monitor function or not
+  const targetFunction = useMonitor ? "monitor" : event.nextFunction;
+
   const messageStr = JSON.stringify(event) //Object to string without adding extra quotes
   console.log("EVENT: ", typeof(messageStr), '\n', messageStr);
-  console.log("Triggering monitor ", process.env.monitorSnsTopicArn);
+  console.log("Triggering next function ", process.env[targetFunction + 'SnsTopicArn']);
 
   let opts = {
     Message: messageStr,
-    TopicArn: process.env.monitorSnsTopicArn,
+    TopicArn: process.env[targetFunction + 'SnsTopicArn'],
   };
 
   sns.publish(opts, (err, data) => {
@@ -59,7 +64,7 @@ module.exports.monitor = async (event, context, callback) => {
   console.log("Received monitoring request for ", typeof(message));
   console.log(message)
 
-  const func = message.function; // Next function to trigger
+  const targetFunction = message.nextFunction; // Next function to trigger
   const action = message.action; // Type of action to perform i.e READ, WRITE, UPDATE, DELETE
   const subject = message.subject; // Subject over which action is perform
   const object = message.object; // Object on which action is performed
@@ -77,7 +82,7 @@ module.exports.monitor = async (event, context, callback) => {
     let sns = new aws.SNS()
     let opts = {
       Message: messageStr,
-      TopicArn: process.env[func + 'SnsTopicArn'],
+      TopicArn: process.env[targetFunction + 'SnsTopicArn'],
     };
 
     sns.publish(opts, (err, data) => {
