@@ -5,6 +5,7 @@ const { newEnforcer } = require('casbin');
 
 // Helper Functions
 const _getConfig = fileName => __dirname + "/config/" + fileName;
+const _debugPrint = variable => console.log("DEBUG: Variable ", variable, " of type ", typeof(variable));
 
 // ================================================================== //
 // Producer function that needs to trigger the consumer function
@@ -12,6 +13,11 @@ const _getConfig = fileName => __dirname + "/config/" + fileName;
 // Event example:
 // '{"requestId", "action": "read", "subject": "bob", "object": "data2", "nextFunction": "consumer", "useMonitor": true}'
 module.exports.producer = (event, context, callback) => {
+  _debugPrint(JSON.stringify(event, null, 2));
+  _debugPrint(event);
+  _debugPrint(event.nextFunction);
+  _debugPrint(event.useMonitor);
+
   let sns = new aws.SNS()
   const useMonitor = event.useMonitor ?? true;
 
@@ -19,8 +25,8 @@ module.exports.producer = (event, context, callback) => {
   const targetFunction = useMonitor ? "monitor" : event.nextFunction;
 
   const messageStr = JSON.stringify(event) //Object to string without adding extra quotes
-  console.log("EVENT: ", typeof(messageStr), '\n', messageStr);
-  console.log("Triggering next function ", process.env[targetFunction + 'SnsTopicArn']);
+  _debugPrint(messageStr);
+  console.log("Triggering next function ", process.env[targetFunction + 'SnsTopicArn'], " useMonitor: ", useMonitor);
 
   let opts = {
     Message: messageStr,
@@ -47,7 +53,8 @@ module.exports.producer = (event, context, callback) => {
 module.exports.consumer = (event, context, callback) => {
   let messageStr = event.Records[0].Sns.Message;
   const message = JSON.parse(messageStr);
-  console.log('Received Message ', message, typeof(message))
+  _debugPrint(message);
+
   const response = {
     statusCode: 200,
     body: 'Received Request'
@@ -61,8 +68,7 @@ module.exports.consumer = (event, context, callback) => {
 module.exports.monitor = async (event, context, callback) => {
   let messageStr = event.Records[0].Sns.Message;
   const message = JSON.parse(messageStr);
-  console.log("Received monitoring request for ", typeof(message));
-  console.log(message)
+  _debugPrint(message);
 
   const targetFunction = message.nextFunction; // Next function to trigger
   const action = message.action; // Type of action to perform i.e READ, WRITE, UPDATE, DELETE

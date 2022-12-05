@@ -21,6 +21,7 @@ functions:
     handler: src/handler.producer
     environment:
       monitorSnsTopicArn: ${self:custom.monitorSnsTopicArn}
+      consumerSnsTopicArn: ${self:custom.consumerSnsTopicArn}
   consumer:
     handler: src/handler.consumer
     events:
