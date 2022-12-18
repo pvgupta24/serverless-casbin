@@ -1,45 +1,7 @@
 'use strict'
 
-const aws = require('aws-sdk')
 const { newEnforcer } = require('casbin');
-
-// Helper Functions
-const _getConfig = fileName => __dirname + '/config/' + fileName;
-const _printDebug = variable => console.log('DEBUG: Variable', variable, 'of type', typeof(variable));
-const _printFunctionStage =
-  (functionName, event, stage) => console.log(stage, 'function:', functionName, 'with params', event);
-// ================================================================== //
-// Helper function to trigger the nextfunction in message from the currfunction
-const triggerNextFunction = (message, callback, currFunction, response=null) => {
-  _printDebug(message);
-  _printDebug(message.useMonitor);
-  _printDebug(message.nextFunction);
-  const sns = new aws.SNS();
-  // Whether to use intermediate monitor function or not
-  const nextFunction = (currFunction !== 'monitor' && message.useMonitor) ? "monitor" : message.nextFunction;
-  _printDebug(nextFunction);
-  console.log(`Triggering ${nextFunction} from ${currFunction}\ with topic
-    ${process.env[nextFunction + 'SnsTopicArn']} & useMonitor: - ${message.useMonitor}`);
-
-  const opts = {
-    Message: JSON.stringify(message),
-    TopicArn: process.env[nextFunction + 'SnsTopicArn'],
-  };
-
-  sns.publish(opts, (err, data) => {
-    if (err) {
-      console.log('ERR: error while sending message over sns:', err)
-      callback(err, null)
-    } else {
-      const res = response ?? {
-        statusCode: 200,
-        body: 'Message sent to ' + nextFunction
-      };
-      callback(null, res);
-    }
-  })
-}
-
+const { _getConfig, _printDebug, _printFunctionStage, triggerNextFunction } = require('./utils');
 // ================================================================== //
 // Producer function that needs to trigger the consumer function
 // Sending the request to the monitor function to verify and forward

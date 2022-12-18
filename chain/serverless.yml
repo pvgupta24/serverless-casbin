@@ -1,4 +1,4 @@
-service: serverless-policy
+service: chain
 provider:
   name: aws
   runtime: nodejs14.x
@@ -17,14 +17,17 @@ custom:
   consumerSnsTopicArn: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${self:custom.consumerSnsTopic}"
   intermediateSnsTopic: "intermediateTopic"
   intermediateSnsTopicArn: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${self:custom.intermediateSnsTopic}"
+  serverless-offline-sns:
+    port: 4002
+    debug: false
 
 functions:
   producer:
     handler: src/handler.producer
     environment:
-      monitorSnsTopicArn: ${self:custom.monitorSnsTopicArn}
-      intermediateSnsTopicArn: ${self:custom.intermediateSnsTopicArn}
-      consumerSnsTopicArn: ${self:custom.consumerSnsTopicArn}
+      # monitorSnsTopicArn: ${self:custom.monitorSnsTopicArn}
+      # intermediateSnsTopicArn: ${self:custom.intermediateSnsTopicArn}
+      # consumerSnsTopicArn: ${self:custom.consumerSnsTopicArn}
   consumer:
     handler: src/handler.consumer
     events:
@@ -34,17 +37,17 @@ functions:
     events:
     - sns: ${self:custom.intermediateSnsTopic}  
     environment:
-      monitorSnsTopicArn: ${self:custom.monitorSnsTopicArn}
-      intermediateSnsTopicArn: ${self:custom.intermediateSnsTopicArn}
-      consumerSnsTopicArn: ${self:custom.consumerSnsTopicArn}
+      # monitorSnsTopicArn: ${self:custom.monitorSnsTopicArn}
+      # intermediateSnsTopicArn: ${self:custom.intermediateSnsTopicArn}
+      # consumerSnsTopicArn: ${self:custom.consumerSnsTopicArn}
   monitor:
     handler: src/handler.monitor
     events:
     - sns: ${self:custom.monitorSnsTopic}
     environment:
-      intermediateSnsTopicArn: ${self:custom.intermediateSnsTopicArn}
-      consumerSnsTopicArn: ${self:custom.consumerSnsTopicArn}
+      # intermediateSnsTopicArn: ${self:custom.intermediateSnsTopicArn}
+      # consumerSnsTopicArn: ${self:custom.consumerSnsTopicArn}
 
-# plugins:
-#   - serverless-offline-sns
-#   - serverless-offline
+plugins:
+  - serverless-offline-sns
+  - serverless-offline

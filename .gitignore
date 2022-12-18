@@ -8,3 +8,7 @@ jspm_packages
 .vscode
 
 package-lock.json
+
+# App specific
+data/
+*/src/utils.js
