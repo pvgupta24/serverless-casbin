@@ -1,0 +1,126 @@
+service: ecommerce
+provider:
+  name: aws
+  runtime: nodejs14.x
+  stage: dev
+  region: us-east-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:DeleteItem
+      Resource:
+        - { "Fn::GetAtt": ["ProductsTable", "Arn" ] }
+        - { "Fn::GetAtt": ["CartsTable", "Arn" ] }
+        - { "Fn::GetAtt": ["OrdersTable", "Arn" ] }
+
+functions:
+  addProductToCart:
+    handler: src/cart.addProductToCart
+    events:
+      - http:
+          path: /cart
+          method: post
+  getCart:
+    handler: src/cart.getCart
+    events:
+      - http:
+          path: /cart
+          method: get
+  updateCart:
+    handler: src/cart.updateCart
+    events:
+      - http:
+          path: /cart
+          method: put
+  createOrder:
+    handler: src/cart.createOrder
+    events:
+      - http:
+          path: /order
+          method: post
+  createProduct:
+    handler: src/product.createProduct
+    events:
+      - http:
+          path: /product
+          method: post
+    # iamRoleStatementsInherit: true
+    # iamRoleStatements:
+    #   - Effect: "Allow"        
+    #     Action:
+    #       - dynamodb:PutItem       
+    #     Resource: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:*:table/Products"
+  getProduct:
+    handler: src/product.getProduct
+    events:
+      - http:
+          path: /product
+          method: get
+  dummy:
+    handler: src/product.dummy
+    events:
+      - http:
+          path: /dummy
+          method: get
+
+resources:
+  Resources:
+    CartsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Carts
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    OrdersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Orders
+        AttributeDefinitions:
+          - AttributeName: order_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: order_id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    ProductsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Products
+        AttributeDefinitions:
+          - AttributeName: product_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: product_id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: Users
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+plugins:
+  - serverless-iam-roles-per-function
