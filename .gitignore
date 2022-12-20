@@ -11,4 +11,4 @@ package-lock.json
 
 # App specific
 data/
-*/src/utils.js
+# */src/utils.js
