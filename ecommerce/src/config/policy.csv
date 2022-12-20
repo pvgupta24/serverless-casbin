@@ -1,0 +1,3 @@
+p, alice, Carts, alice, *
+p, bob, Carts, bob, get
+p, *, Products, *, get

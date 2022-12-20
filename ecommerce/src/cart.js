@@ -1,8 +1,10 @@
 // const Stripe = require('stripe');
+const { newEnforcer } = require('casbin');
 const AWS = require('aws-sdk');
+const lambda = new AWS.Lambda();
 const { _getConfig, _printDebug, _printFunctionStage, triggerNextFunction, sleep } = require('./utils');
 
-// Example input: event = { "user_id": "123", "product_id": "456", "quantity": 1 }
+// serverless invoke -f addProductToCart -d '{"product_id":"test", "quantity":1, "user_id":"alice", "useMonitor":true}' -l
 module.exports.addProductToCart = async (event, context, callback) => {
   const currFunction = 'addProductToCart';
   const messageStr = JSON.stringify(event) //Object to string without adding extra quotes
@@ -15,8 +17,33 @@ module.exports.addProductToCart = async (event, context, callback) => {
   // Get the user's cart from the DynamoDB table
   const dynamodb = new AWS.DynamoDB.DocumentClient();
   const table = 'Carts';
-  const res = await dynamodb.get({ TableName: table, Key: { user_id: event['user_id'] } }).promise();
-  const cart = res.Item ?? { user_id: event['user_id'] };
+  let cart = {};
+  if (event['useMonitor'] === true) {
+    const params = {
+      FunctionName: 'ecommerce-dev-dbMonitor', /* required */
+      Payload: JSON.stringify({
+        user: event['user_id'], table: table, key: event['user_id'], action: 'get'
+      }),
+    };
+    _printDebug(params);
+    const response = await lambda.invoke(params).promise();
+    _printDebug(response);
+    if (response.Payload !== null && response.StatusCode == 200) {
+      _printDebug(response.Payload);
+      cart = JSON.parse(response.Payload) ?? { user_id: event['user_id'] };
+    }
+    else {
+      console.log('Access Denied to request');
+      return null;
+    }
+  }
+  else {
+    const res = await dynamodb.get({ TableName: table, Key: { user_id: event['user_id'] } }).promise();
+    _printDebug(res);
+    cart = res.Item ?? { user_id: event['user_id'] };
+  }
+
+  cart['user_id'] = event['user_id'];
 
   // Add the product to the cart
   if (product_id in cart) {
@@ -25,9 +52,25 @@ module.exports.addProductToCart = async (event, context, callback) => {
     cart[product_id] = quantity;
   }
 
-  // Update the cart in the DynamoDB table
-  await dynamodb.put({ TableName: table, Item: cart }).promise();
-
+  if (event['useMonitor'] === true) {
+    const params = {
+      FunctionName: 'ecommerce-dev-dbMonitor', /* required */
+      Payload: JSON.stringify({
+        user: event['user_id'], table: table, key: event['user_id'], action: 'put', item: cart
+      }),
+    };
+    _printDebug(params);
+    const response = await lambda.invoke(params).promise();
+    _printDebug(response);
+    if (!response.Payload) {
+      console.log('Access Denied to request or error in request');
+      return null;
+    }
+  }
+  else {
+    // Update the cart in the DynamoDB table
+    await dynamodb.put({ TableName: table, Item: cart }).promise();
+  }
   const response = {
     statusCode: 200,
     body: 'Updated cart to ' + JSON.stringify(cart)
@@ -62,7 +105,7 @@ module.exports.addProductToCart = async (event, context, callback) => {
 //   return cart;
 // };
 
-// Example input: event = { "user_id": "123", "payment_token": "tok_visa" , "order": {} }
+// serverless invoke -f createOrder -d '{ "user_id": "alice", "payment_token": "tok_visa" , "order": {}, "useMonitor":true }' -l
 module.exports.createOrder = async (event, context, callback) => {
   const currFunction = 'createOrder';
   const messageStr = JSON.stringify(event) //Object to string without adding extra quotes
@@ -79,11 +122,51 @@ module.exports.createOrder = async (event, context, callback) => {
   order['order_id'] = generateOrderId();
   order['user_id'] = user_id;
   order['order_date'] = new Date();
-  await dynamodb.put({ TableName: table, Item: order }).promise();
+  if (event['useMonitor'] === true) {
+    const params = {
+      FunctionName: 'ecommerce-dev-dbMonitor', /* required */
+      Payload: JSON.stringify({
+        user: event['user_id'], table: table, key: event['user_id'], action: 'put', item: order
+      }),
+    };
+    _printDebug(params);
+    const response = await lambda.invoke(params).promise();
+    _printDebug(response);
+    if (!response.Payload) {
+      console.log('Access Denied to request or error in request');
+      return null;
+    }
+  }
+  else {
+    await dynamodb.put({ TableName: table, Item: order }).promise();
+  }
 
-  // Get the user's cart from the DynamoDB table to process order
-  const res = await dynamodb.get({ TableName: table, Key: { user_id: event['user_id'] } }).promise();
-  const cart = res.Item;
+  const cartsTable = 'Carts';
+  let cart = {};
+  if (event['useMonitor'] === true) {
+    const params = {
+      FunctionName: 'ecommerce-dev-dbMonitor', /* required */
+      Payload: JSON.stringify({
+        user: event['user_id'], table: cartsTable, key: event['user_id'], action: 'get'
+      }),
+    };
+    _printDebug(params);
+    const response = await lambda.invoke(params).promise();
+    _printDebug(response);
+    if (response.Payload !== null && response.StatusCode == 200) {
+      _printDebug(response.Payload);
+      cart = JSON.parse(response.Payload);
+    }
+    else {
+      console.log('Access Denied to request');
+      return null;
+    }
+  }
+  else {
+    const res = await dynamodb.get({ TableName: table, Key: { user_id: event['user_id'] } }).promise();
+    _printDebug(res);
+    cart = res.Item ?? { user_id: event['user_id'] };
+  }
 
   // Simulating delay in payment processing in ms
   await sleep(3000);
@@ -97,8 +180,26 @@ module.exports.createOrder = async (event, context, callback) => {
   //   source: payment_token,
   // });
 
-  // Clear the cart from the DynamoDB table
-  await dynamodb.delete({ TableName: 'Carts', Key: { user_id: user_id } }).promise();
+  if (event['useMonitor'] === true) {
+    const params = {
+      FunctionName: 'ecommerce-dev-dbMonitor', /* required */
+      Payload: JSON.stringify({
+        user: event['user_id'], table: cartsTable, key: event['user_id'], action: 'delete'
+      }),
+    };
+    _printDebug(params);
+    const response = await lambda.invoke(params).promise();
+    _printDebug(response);
+    if (!response.Payload) {
+      console.log('Access Denied to request or error in request');
+      return null;
+    }
+    
+  }
+  else {
+    // Clear the cart from the DynamoDB table
+    await dynamodb.delete({ TableName: 'Carts', Key: { user_id: user_id } }).promise();
+  }
 
   const response = {
     statusCode: 200,
@@ -116,4 +217,44 @@ module.exports.createOrder = async (event, context, callback) => {
 function generateOrderId() {
   // Generate a random order ID
   return Math.random().toString(36).substr(2, 9);
+}
+
+// ================================================================== //
+// Monitor function that verifies the request and forwards it to the consumer
+// Triggered by producer function using process.env['monitorSnsTopicArn']
+module.exports.dbMonitor = async (event, context, callback) => {
+  const currFunction = 'dbMonitor';
+  let messageStr = JSON.stringify(event);
+  _printFunctionStage(currFunction, messageStr, 'START');
+  const message = event;
+  _printDebug(message);
+
+  const enforcer = await newEnforcer(_getConfig('model.conf'), _getConfig('policy.csv'));
+  const { user, table, key, action, item } = message;
+  const actionAllowed = await enforcer.enforce(user, table, key, action);
+
+  if (actionAllowed) {
+    console.log('Action is allowed for', JSON.stringify(message))
+    const dynamodb = new AWS.DynamoDB.DocumentClient();
+    switch (action) {
+      case 'get':
+        const res = await dynamodb.get({ TableName: table, Key: { user_id: user } }).promise();
+        return true;
+      case 'put':
+        await dynamodb.put({ TableName: table, Item: item }).promise();
+        return true;
+      case 'delete':
+        await dynamodb.delete({ TableName: table, Key: { user_id: user } }).promise();
+        return true;
+    }
+  } else {
+    // const response = {
+    //   statusCode: 403,
+    //   body: 'Forbidden Request ' + JSON.stringify(message)
+    // }
+    console.log('Forbidden Request ', JSON.stringify(message))
+    // callback(null, response)
+    return null;
+  }
+  _printFunctionStage(currFunction, messageStr, 'END');
 }
