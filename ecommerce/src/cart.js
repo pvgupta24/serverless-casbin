@@ -45,6 +45,7 @@ module.exports.addProductToCart = async (event, context, callback) => {
 
   cart['user_id'] = event['user_id'];
 
+  _printDebug(cart);
   // Add the product to the cart
   if (product_id in cart) {
     cart[product_id] += quantity;
@@ -239,7 +240,7 @@ module.exports.dbMonitor = async (event, context, callback) => {
     switch (action) {
       case 'get':
         const res = await dynamodb.get({ TableName: table, Key: { user_id: user } }).promise();
-        return true;
+        return res?.Item;
       case 'put':
         await dynamodb.put({ TableName: table, Item: item }).promise();
         return true;
